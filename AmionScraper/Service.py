@@ -14,5 +14,6 @@ class Service(Base):
     hospital_group = Column(Integer())
     is_call = Column(Boolean())
     has_call = Column(Boolean())
+    has_post_call = Column(Boolean())
     vacation_allowed = Column(Boolean())
     required_number_residents = Column(Integer())
