@@ -83,7 +83,7 @@ class AmionScraper:
         # start_date = datetime.strptime("09/14/2017", "%m/%d/%Y")
 
         # start_date needs to have 0's for time
-        start_date = datetime.combine(datetime.today().date(), datetime.min.time())
+        start_date = datetime.combine(datetime.today().date() - timedelta(days=7), datetime.min.time())
         stop_date = datetime.strptime("06/30/2018", "%m/%d/%Y")
 
         number_of_days = (stop_date - start_date).days + 2
