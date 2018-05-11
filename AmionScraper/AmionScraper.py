@@ -36,7 +36,7 @@ class AmionScraper:
 
         physicians = self.session.query(Physician).all()
         for physician in physicians:
-            self.physicians[physician.name] = physician.id
+            self.physicians[physician.name.lower()] = physician
 
         updated_schedule = self.check_for_updated_schedule(file_string)
         if updated_schedule:
@@ -80,13 +80,13 @@ class AmionScraper:
         return False
 
     def get_all_date_data(self, file_string):
-        # start_date = datetime.strptime("09/14/2017", "%m/%d/%Y")
-
         # start_date needs to have 0's for time
         start_date = datetime.combine(datetime.today().date() - timedelta(days=7), datetime.min.time())
-        stop_date = datetime.strptime("06/30/2018", "%m/%d/%Y")
+        # start_date = datetime.strptime("08/01/2018", "%m/%d/%Y")
 
-        number_of_days = (stop_date - start_date).days + 2
+        stop_date = datetime.strptime("06/30/2019", "%m/%d/%Y")
+
+        number_of_days = (stop_date - start_date).days + 1
         print(number_of_days)
 
         self.shifts_to_store = []
@@ -143,8 +143,20 @@ class AmionScraper:
             # if service_record is None:
 
             # Get/Insert Physician
-            # physician_record = self.session.query(Physician).filter(Physician.name == this_physician).first()
-            if this_physician not in self.physicians:
+
+            # Check if comma separated
+            if this_physician.find(', ') != -1:
+                last, first = this_physician.split(', ')
+                this_physician = first + " " + last
+
+            # manual corrections to names
+            this_physician = this_physician.replace('Nate A', 'Nathaniel A')
+            this_physician = this_physician.replace('Jen B', 'Jennifer B')
+            this_physician = this_physician.replace('Rob P', 'Robert P')
+
+            this_physician_lowercase = this_physician.lower()  # to reduce errors between years
+
+            if this_physician_lowercase not in self.physicians:
                 # Insert Position if new Physician
                 position_record = self.session.query(Position).filter(Position.name == this_position).first()
                 if position_record is None:
@@ -154,21 +166,33 @@ class AmionScraper:
                 physician_record = Physician(name=this_physician, position_id=position_record.id)
                 self.session.add(physician_record)
                 self.session.flush()
-                self.physicians[physician_record.name] = physician_record.id
+                self.physicians[this_physician_lowercase] = physician_record
                 changes_made = True
+            # Update Physician position_id
+            else:
+                physician_record = self.physicians[this_physician_lowercase]
+                if physician_record.position.name != this_position:
+                    position_record = self.session.query(Position).filter(Position.name == this_position).first()
+                    if position_record is None:
+                        position_record = Position(name=this_position)
+                        self.session.add(position_record)
+                        self.session.flush()
+                    physician_record.position_id = position_record.id
+                    self.session.flush()
+                    changes_made = True
 
             # Insert Shift
             new_shift = Shift(
                 shift_date=shift_date,
                 service_id=self.services[this_service],
-                physician_id=self.physicians[this_physician])
+                physician_id=self.physicians[this_physician_lowercase].id)
             # self.session.add(new_shift)
             self.shifts_to_store.append(new_shift)
             if changes_made:
                 self.session.commit()
 
     @staticmethod
-    def scrape_page_for_shifts(html_data, is_call = False):
+    def scrape_page_for_shifts(html_data, is_call=False):
         soup = BeautifulSoup(html_data, 'html5lib')
         table_rows = soup.find_all("tr")
         begin_search = False
@@ -185,11 +209,10 @@ class AmionScraper:
                 if not text:
                     continue
                 this_shift.append(text)
-                if len(this_shift) == 4:
-                    if is_call:
-                        shifts.append((this_shift[0], this_shift[2], this_shift[3]))
-                    else:
-                        shifts.append((this_shift[0], this_shift[1], this_shift[2]))
+                if is_call and len(this_shift) == 4:
+                    shifts.append((this_shift[0], this_shift[2], this_shift[3]))
+                elif not is_call and len(this_shift) == 3:
+                    shifts.append((this_shift[0], this_shift[1], this_shift[2]))
         return shifts
 
     @staticmethod
