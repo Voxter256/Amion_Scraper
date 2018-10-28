@@ -123,21 +123,22 @@ class CalendarReader:
         event_calendar_ids = []
         for physician in all_physicians:
             physician_name_split = physician.name.split(" ")
-            first_initial = physician_name_split[0][0:1] + ". "
+            first_name = physician_name_split[0]
+            # first_initial = first_name[0:1] + ". "
             if len(physician_name_split) == 3:
                 # one entry for each last name
                 last_name_1 = physician_name_split[1]
-                this_name_1 = first_initial + last_name_1
+                this_name_1 = first_name + " " + last_name_1
                 physician_dictionary[this_name_1] = physician.id
                 physician_name_list.append(this_name_1)
 
-                last_name_2 = physician_name_split[1]
-                this_name_2 = first_initial + last_name_2
-                physician_dictionary[this_name_2] = physician.id
-                physician_name_list.append(this_name_2)
+                # last_name_2 = physician_name_split[1]
+                # this_name_2 = first_name + " " + last_name_2
+                # physician_dictionary[this_name_2] = physician.id
+                # physician_name_list.append(this_name_2)
             else:
                 last_name = " ".join(physician_name_split[1:])
-                this_name = first_initial + last_name
+                this_name = first_name + " " + last_name
                 physician_dictionary[this_name] = physician.id
                 physician_name_list.append(this_name)
 
@@ -154,7 +155,7 @@ class CalendarReader:
             # Store all calendar ids to see if any are missing and delete those entries
             event_calendar_ids.append(calendar_id)
 
-            summary_split = re.split(' ((Vacation)|(Time Away))[. ]*', summary, re.IGNORECASE)
+            summary_split = re.split(' ((vaca)|(edu))', summary, re.IGNORECASE)
             physician_matches = get_close_matches(summary_split[0], physician_name_list, n=1, cutoff=0.9)
             if len(physician_matches) == 0:
                 current_blocked_days = self.session.query(BlockedDays).filter(BlockedDays.calendar_id == calendar_id).first()
