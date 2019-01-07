@@ -28,7 +28,8 @@ class AmionScraper:
             return False
         url_services = "http://www.amion.com/cgi-bin/ocs?Lo=" + password
         page = requests.get(url_services)
-        file_string = page.url[-15:]
+        file_string_regex = re.compile('=[a-z0-9!]+')
+        file_string = file_string_regex.search(page.url).group()[1:]
 
         services = self.session.query(Service).all()
         for service in services:
