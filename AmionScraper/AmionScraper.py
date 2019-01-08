@@ -4,6 +4,7 @@ import requests
 
 from datetime import datetime, timedelta
 from bs4 import BeautifulSoup
+from sqlalchemy import func, and_
 
 from .Base import Session
 from .Physician import Physician
@@ -105,6 +106,9 @@ class AmionScraper:
         self.session.bulk_save_objects(self.shifts_to_store)
         self.session.commit()
 
+        # sometimes night float is scheduled for both day and night
+        self.delete_duplicate_shifts()
+
     def get_date_data(self, shift_date, file_string):
         url_date_string = self.convert_date(shift_date)
 
@@ -191,6 +195,39 @@ class AmionScraper:
             self.shifts_to_store.append(new_shift)
             if changes_made:
                 self.session.commit()
+
+    def delete_duplicate_shifts(self):
+        counts = self.session\
+            .query(
+                Shift.physician_id,
+                Shift.service_id,
+                Shift.shift_date,
+                func.count('*').label('count')
+            ).group_by(
+                Shift.physician_id,
+                Shift.service_id,
+                Shift.shift_date
+            ).subquery('counts')
+
+        query = self.session\
+            .query(
+                Shift.id, Shift.physician_id, Shift.service_id, Shift.shift_date, counts.c.count
+            ).distinct(
+                Shift.id, Shift.physician_id, Shift.service_id, Shift.shift_date
+            ).filter(and_(
+                Shift.physician_id == counts.c.physician_id,
+                Shift.service_id == counts.c.service_id,
+                Shift.shift_date == counts.c.shift_date,
+                counts.c.count >= 2,)
+            ).all()
+        for index, row in enumerate(query):
+            print(row)
+            if index == 0:
+                continue
+            if row[1] == query[index-1][1] and row[2] == query[index-1][2] and row[3] == query[index-1][3]:
+                self.session.query(Shift).filter(Shift.id == row[0]).delete()
+                print("delete")
+        self.session.commit()
 
     @staticmethod
     def scrape_page_for_shifts(html_data, is_call=False):
