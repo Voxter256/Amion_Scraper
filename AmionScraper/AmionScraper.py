@@ -86,7 +86,7 @@ class AmionScraper:
         start_date = datetime.combine(datetime.today().date() - timedelta(days=7), datetime.min.time())
         # start_date = datetime.strptime("08/01/2018", "%m/%d/%Y")
 
-        stop_date = datetime.strptime("06/30/2019", "%m/%d/%Y")
+        stop_date = datetime.strptime("06/30/2020", "%m/%d/%Y")
 
         number_of_days = (stop_date - start_date).days + 1
         print(number_of_days)
