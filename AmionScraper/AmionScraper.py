@@ -84,9 +84,12 @@ class AmionScraper:
     def get_all_date_data(self, file_string):
         # start_date needs to have 0's for time
         start_date = datetime.combine(datetime.today().date() - timedelta(days=7), datetime.min.time())
-        # start_date = datetime.strptime("08/01/2018", "%m/%d/%Y")
+        if start_date < datetime(2019, 7, 1):
+            start_date = datetime(2019, 7, 1)
 
-        stop_date = datetime.strptime("06/30/2020", "%m/%d/%Y")
+        # start_date = datetime(2020, 1, 1)
+
+        stop_date = datetime(2020, 6, 30)
 
         number_of_days = (stop_date - start_date).days + 1
         print(number_of_days)
@@ -113,8 +116,9 @@ class AmionScraper:
         url_date_string = self.convert_date(shift_date)
 
         # Get core services (not call)
-        url_services = "http://www.amion.com/cgi-bin/ocs?Lo=" + file_string + \
-                       "&Syr=2017&Page=Alrots&Fsiz=0&Yjd=" + url_date_string
+        url_services = "http://www.amion.com/cgi-bin/ocs?Lo={}&Syr={}&Page=Alrots&Fsiz=0&Yjd={}"\
+            .format(file_string, shift_date.year, url_date_string)
+        print("Services URL: {}".format(url_services))
         page = requests.get(url_services)
         html_data = page.content
         shifts = self.scrape_page_for_shifts(html_data)
@@ -122,11 +126,12 @@ class AmionScraper:
         self.store_shifts(shifts, shift_date)
 
         # Get call services
-        url_call = "http://www.amion.com/cgi-bin/ocs?Lo=" + file_string + \
-                   "&Syr=2017&Page=OnCall&Fsiz=0&Yjd=" + url_date_string
+        url_call = "http://www.amion.com/cgi-bin/ocs?Lo={}&Syr={}&Page=OnCall&Fsiz=0&Yjd={}" \
+            .format(file_string, shift_date.year, url_date_string)
+        print("Call URL: {}".format(url_call))
         page = requests.get(url_call)
         html_data = page.content
-        shifts = self.scrape_page_for_shifts(html_data, is_call = True)
+        shifts = self.scrape_page_for_shifts(html_data, is_call=True)
         print(shifts)
         self.store_shifts(shifts, shift_date, is_call=True)
 
