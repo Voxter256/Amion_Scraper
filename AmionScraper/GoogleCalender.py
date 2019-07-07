@@ -71,12 +71,7 @@ class CalendarReader:
         if not credentials or credentials.invalid:
             flow = client.flow_from_clientsecrets(CLIENT_SECRET_FILE, SCOPES)
             flow.user_agent = APPLICATION_NAME
-            if flags:
-                print("yes")
-                credentials = tools.run_flow(flow, store, flags)
-            else:  # Needed only for compatibility with Python 2.6
-                print("no")
-                credentials = tools.run(flow, store)
+            credentials = tools.run_flow(flow, store, flags)
             print('Storing credentials to ' + credential_path)
         return credentials
 
@@ -100,12 +95,14 @@ class CalendarReader:
         service = discovery.build('calendar', 'v3', http=http, developerKey=self.authentication_data.developerKey)
 
         # now = datetime.datetime.utcnow().isoformat() + 'Z' # 'Z' indicates UTC time
-        now = '2017-07-01T00:00:00Z'  # indicates UTC time
+        now = '2019-07-01T00:00:00Z'  # indicates UTC time
 
         print('Getting All Events')
 
+        # calendar_id = self.authentication_data.calendarId
+        calendar_id = 'uhcmc.psychiatry.residency@gmail.com'
         events_result = service.events().list(
-            calendarId=self.authentication_data.calendarId, timeMin=now, singleEvents=True,
+            calendarId=calendar_id, timeMin=now, singleEvents=True,
             orderBy='startTime').execute()
         events = events_result.get('items', [])
 
@@ -117,31 +114,51 @@ class CalendarReader:
         self.store_credentials()
 
     def process_events(self, events):
-        all_physicians = self.session.query(Physician).all()
+        all_physicians = self.session.query(Physician).filter(Physician.position_id != 1)
         physician_dictionary = {}
         physician_name_list = []
         event_calendar_ids = []
         for physician in all_physicians:
             physician_name_split = physician.name.split(" ")
             first_name = physician_name_split[0]
-            # first_initial = first_name[0:1] + ". "
-            if len(physician_name_split) == 3:
-                # one entry for each last name
-                last_name_1 = physician_name_split[1]
-                this_name_1 = first_name + " " + last_name_1
-                physician_dictionary[this_name_1] = physician.id
-                physician_name_list.append(this_name_1)
-
-                # last_name_2 = physician_name_split[1]
-                # this_name_2 = first_name + " " + last_name_2
-                # physician_dictionary[this_name_2] = physician.id
-                # physician_name_list.append(this_name_2)
+            last_name = physician_name_split[-1]
+            # first name only
+            identical_first_name = [name for name in physician_name_list if first_name == name]
+            if len(identical_first_name) > 0:
+                physician_name_list = list(filter(lambda name: name != first_name, physician_name_list))
             else:
-                last_name = " ".join(physician_name_split[1:])
-                this_name = first_name + " " + last_name
-                physician_dictionary[this_name] = physician.id
-                physician_name_list.append(this_name)
-
+                physician_dictionary[first_name] = physician.id
+                physician_name_list.append(first_name)
+            # first and last names
+            physician_name_split = physician.name.split(" ")
+            first_name = physician_name_split[0]
+            last_name = physician_name_split[-1]
+            this_name = first_name + " " + last_name
+            physician_dictionary[this_name] = physician.id
+            physician_name_list.append(this_name)
+            # last initial
+            this_name_last_initial = first_name + " " + last_name[0]
+            physician_dictionary[this_name_last_initial] = physician.id
+            physician_name_list.append(this_name_last_initial)
+            
+            # nickname and last name
+            nickname_result = re.search(r"[\(].*[\)]", physician.name)
+            if nickname_result:
+                nickname = nickname_result.group(0)[1:-1]
+                # nickname only
+                identical_nickname = [name for name in physician_name_list if nickname == name]
+                if len(identical_nickname) > 0:
+                    physician_name_list = list(filter(lambda name: name != nickname, physician_name_list))
+                else:
+                    physician_dictionary[nickname] = physician.id
+                    physician_name_list.append(nickname)
+                full_nickmane = nickname + " " + last_name
+                physician_dictionary[full_nickmane] = physician.id
+                physician_name_list.append(full_nickmane)
+                # last initial
+                nickname_last_initial = nickname + " " + last_name[0]
+                physician_dictionary[nickname_last_initial] = physician.id
+                physician_name_list.append(nickname_last_initial)
         for event in events:
             summary = event["summary"]
             start_date = datetime.datetime.strptime(event["start"]["date"], "%Y-%m-%d")
@@ -155,8 +172,16 @@ class CalendarReader:
             # Store all calendar ids to see if any are missing and delete those entries
             event_calendar_ids.append(calendar_id)
 
-            summary_split = re.split(' ((vaca)|(edu))', summary, re.IGNORECASE)
-            physician_matches = get_close_matches(summary_split[0], physician_name_list, n=1, cutoff=0.9)
+            summary_no_parenthesis = re.sub(r"[\(].*", "", summary)
+            # summary_split = re.split(r'-', summary, maxsplit=1, flags=re.IGNORECASE)
+            # if len(summary_split == 1):
+            time_off_type = re.search(r'vaca|educ|sick', summary_no_parenthesis, re.IGNORECASE)
+            if time_off_type:
+                # TODO separate days off by type
+                # get name
+                physician_name_to_find = re.findall(r'[a-zA-Z ]+', summary_no_parenthesis[:time_off_type.start()])[0].strip()
+            
+            physician_matches = get_close_matches(physician_name_to_find, physician_name_list, n=1, cutoff=0.9)
             if len(physician_matches) == 0:
                 current_blocked_days = self.session.query(BlockedDays).filter(BlockedDays.calendar_id == calendar_id).first()
                 if current_blocked_days is not None:
@@ -194,6 +219,10 @@ class CalendarReader:
                     physician_id=this_physician_id, created_at=created_at, updated_at=updated_at
                 )
                 self.session.add(this_vacation)
+
+            # delete associated Blocked Day
+            self.session.query(BlockedDays).filter(BlockedDays.calendar_id == calendar_id).delete()
+
 
         # Delete Vacations days that no longer exist
         old_vacations = self.session.query(Vacation).filter(~Vacation.calendar_id.in_(event_calendar_ids))
