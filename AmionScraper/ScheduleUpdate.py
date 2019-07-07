@@ -1,7 +1,7 @@
 from datetime import datetime
 from sqlalchemy import Column, Integer, DateTime
 
-from .Base import Base, Session
+from AmionScraper.Base import Base, Session
 
 session = Session()
 

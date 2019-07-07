@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey
 from sqlalchemy.orm import relationship, backref
 
-from .Base import Base, Session
+from AmionScraper.Base import Base, Session
 
 session = Session()
 

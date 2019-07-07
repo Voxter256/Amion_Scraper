@@ -1,6 +1,9 @@
 # AmionScraper Specific
 client_secret.json
 
+#Visual Studio Code
+.vscode
+
 
 # Created by .ignore support plugin (hsz.mobi)
 ### Python template

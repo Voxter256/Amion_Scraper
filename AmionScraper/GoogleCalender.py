@@ -11,11 +11,11 @@ from oauth2client import tools
 from oauth2client.file import Storage
 from difflib import get_close_matches
 
-from .Base import Session
-from .Physician import Physician
-from .Vaction import Vacation
-from .BlockedDays import BlockedDays
-from .Authentication import Authentication
+from AmionScraper.Base import Session
+from AmionScraper.Physician import Physician
+from AmionScraper.Vaction import Vacation
+from AmionScraper.BlockedDays import BlockedDays
+from AmionScraper.Authentication import Authentication
 
 
 class CalendarReader:

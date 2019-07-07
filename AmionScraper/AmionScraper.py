@@ -6,12 +6,12 @@ from datetime import datetime, timedelta
 from bs4 import BeautifulSoup
 from sqlalchemy import func, and_
 
-from .Base import Session
-from .Physician import Physician
-from .Position import Position
-from .ScheduleUpdate import ScheduleUpdate
-from .Service import Service
-from .Shift import Shift
+from AmionScraper.Base import Session
+from AmionScraper.Physician import Physician
+from AmionScraper.Position import Position
+from AmionScraper.ScheduleUpdate import ScheduleUpdate
+from AmionScraper.Service import Service
+from AmionScraper.Shift import Shift
 
 
 class AmionScraper:
