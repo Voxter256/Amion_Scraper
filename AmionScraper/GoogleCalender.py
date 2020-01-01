@@ -161,11 +161,29 @@ class CalendarReader:
                 physician_name_list.append(nickname_last_initial)
         for event in events:
             summary = event["summary"]
-            start_date = datetime.datetime.strptime(event["start"]["date"], "%Y-%m-%d")
-            end_date = datetime.datetime.strptime(event["end"]["date"], "%Y-%m-%d") - datetime.timedelta(days=1)
+            if "date" in event["start"]:
+                start_date = datetime.datetime.strptime(event["start"]["date"], "%Y-%m-%d")
+            elif "dateTime" in event["start"]:
+                start_date = datetime.datetime.strptime(event["start"]["dateTime"][:10], "%Y-%m-%d")
+            else:
+                print("EXCEPTION")
+                print(event["start"])
+                continue
+            
+            if "date" in event["end"]:
+                end_date = datetime.datetime.strptime(event["end"]["date"], "%Y-%m-%d") - datetime.timedelta(days=1)
+            elif "dateTime" in event["end"]:
+                end_date = datetime.datetime.strptime(event["end"]["dateTime"][:10], "%Y-%m-%d")
+                print(event)
+            else:
+                print("EXCEPTION")
+                print(event["end"])
+                continue
+
             calendar_id = event["id"]
             created_at = datetime.datetime.strptime(event["created"][:19], "%Y-%m-%dT%H:%M:%S")
             updated_at = datetime.datetime.strptime(event["updated"][:19], "%Y-%m-%dT%H:%M:%S")
+
             # print(summary + " " + start_date.strftime("%Y-%m-%dT%H:%M:%S") + " " + end_date.strftime("%Y-%m-%dT%H:%M:%S") + " " + calendar_id)
             # print(str(created_at) + " " + str(updated_at))
 
