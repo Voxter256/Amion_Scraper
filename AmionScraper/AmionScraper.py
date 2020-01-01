@@ -253,7 +253,7 @@ class AmionScraper:
                     continue
                 this_shift.append(text)
                 if is_call and len(this_shift) == 4:
-                    shifts.append((this_shift[0], this_shift[2], this_shift[3]))
+                    shifts.append((this_shift[0], this_shift[1], this_shift[2]))
                 elif not is_call and len(this_shift) == 3:
                     shifts.append((this_shift[0], this_shift[1], this_shift[2]))
         return shifts
